@@ -74,14 +74,45 @@ export default function (stream, {validate = true, fix = true}) {
 		}
 	}
 
-	// If inputData is boolean false output record is failed record
 	async function convertRecord(inputData) {
 		// InputData : { record: record, linkData: [{400: data}, {100: data}, {135: data}]}
 		// TODO: place data from link data to record, validate and send to import queue
+		// to commons => {failed: false, record: {record: data, linkData: data}} or changes to melinda-record-import-commons
+		// https://github.com/NatLibFi/melinda-record-import-commons/blob/e680a1018ad0bd268750e94538ad286028e61761/src/transformer/transformer.js#L105
 
 		logger.log('debug', inputData.record);
 
-		const creationDate = moment().format('YYMMDD');
+	// KATSO https://github.com/NatLibFi/marc-record-js
+	// TODO Kentät BIB
+	// Haku titlellä client.searchRetrieve('dc.title="kivi*"')
+	// Haku idllä client.searchRetrieve('rec.id=9000')
+	// Haku tekijällä client.searchRetrieve('dc.author="Päätalo, Kalle"')
+	// Lisä infoa http://app.aleph.csc.fi:210/bib
+	// 026 Sormenjälki
+	// 017 Tekijänoikeus
+	// 034 kartta tiedot
+	// 039 Suomalainen katasto
+	// 100 Henkilönimet
+	// 110 Yhteisöt
+	// 245 Nimike- ja vastuullisuusmerkintö
+
+	// TODO Kentät AUCT
+	// 100 Henkilönimet
+	// 110 Yhteisöt
+	// 148 - OTSIKKOMUOTO - AIKAA ILMAISEVA TERMI (ET)
+	// 151 - OTSIKKOMUOTO - MAANTIETEELLINEN NIMI (ET)
+	// 181 - OTSIKKOMUOTO - MAANTIETEELLINEN LISÄMÄÄRE (ET)
+	// 182 - OTSIKKOMUOTO - AIKAA ILMAISEVA LISÄMÄÄRE (ET)
+	// 046 - ERIKOISKOODATUT AJANKOHDAT (T) alku ja loppu
+	// 370 - PAIKANNIMI (T)
+	// 373 - YHTEYS RYHMÄÄN (T)
+	// 375 - SUKUPUOLI (T)
+	// 378 - HENKILÖNNIMEN TÄYDELLISEMPI MUOTO (T)
+
+	// const f100 = marcRecord.get(/^100$/);
+	// const nimi = f100.subfields.some(sub => (sub.code === 'a'));
+
+	const creationDate = moment().format('YYMMDD');
 		let record = new MarcRecord({
 			leader: '00000ngm a22005774i 4500',
 			fields: [

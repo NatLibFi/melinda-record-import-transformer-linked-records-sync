@@ -1,6 +1,6 @@
 # Service for transformer record link migration
 
-This service collects reads data from blob to transform linked info  to importable records before sending them to import queue
+This service reads data from blob to transform linked info  to importable records before sending them to import queue
 
 ## License and copyright
 

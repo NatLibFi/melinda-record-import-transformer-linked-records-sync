@@ -50,6 +50,7 @@ export default function (stream, {validate = true, fix = true}) {
 	async function readStream(stream) {
 		let promises = [];
 
+		// TODO collect chunk size amount and send as chunk to importer
 		try {
 			const pipeline = chain([
 				stream,
@@ -74,46 +75,72 @@ export default function (stream, {validate = true, fix = true}) {
 		}
 	}
 
-	async function convertRecord(inputData) {
-		// InputData : { record: record, linkData: [{400: data}, {100: data}, {135: data}]}
-		// TODO: place data from link data to record, validate and send to import queue
-		// to commons => {failed: false, record: {record: data, linkData: data}} or changes to melinda-record-import-commons
+	async function convertRecord(data) {
+		// InputData : {record, linkdata: [{tag: 100, record}, {tag:110, record}]}
+		// Data.record = source record
+		const record = new MarcRecord(data.record);
+		logger.log('debug', JSON.stringify(record));
+
+		// Data.linkData.record = possible linked record
+		const linkData = data.linkData.map(data => {
+			data.record = new MarcRecord(data.record);
+			return data;
+		});
+		logger.log('debug', JSON.stringify(linkData));
+
+		// TODO: Place data from link data to record, validate and send to import queue
+		/*
+		const validLinkData = linkData.filter(data => {
+			// Validate linkData
+			return validateLinkData(record, data.tag, data.record);
+		});
+
+		const mergedRecord = mergeLinkData(record, validLinkData);
+
+		function mergeLinkData(record, validLinkData) {
+			const merged = record;
+			validLinkData.forEach(data => {
+				merge(merged, data);
+			});
+			return merged;
+		}
+		*/
+
+		// Return to commons => {failed: false, record: {record: data, linkData: data}}
 		// https://github.com/NatLibFi/melinda-record-import-commons/blob/e680a1018ad0bd268750e94538ad286028e61761/src/transformer/transformer.js#L105
 
-		logger.log('debug', inputData.record);
+		// KATSO https://github.com/NatLibFi/marc-record-js
+		// TODO Kentät BIB
+		// Haku titlellä client.searchRetrieve('dc.title="kivi*"')
+		// Haku idllä client.searchRetrieve('rec.id=9000')
+		// Haku tekijällä client.searchRetrieve('dc.author="Päätalo, Kalle"')
+		// Lisä infoa http://app.aleph.csc.fi:210/bib
+		// 026 Sormenjälki
+		// 017 Tekijänoikeus
+		// 034 kartta tiedot
+		// 039 Suomalainen katasto
+		// 100 Henkilönimet
+		// 110 Yhteisöt
+		// 245 Nimike- ja vastuullisuusmerkintö
 
-	// KATSO https://github.com/NatLibFi/marc-record-js
-	// TODO Kentät BIB
-	// Haku titlellä client.searchRetrieve('dc.title="kivi*"')
-	// Haku idllä client.searchRetrieve('rec.id=9000')
-	// Haku tekijällä client.searchRetrieve('dc.author="Päätalo, Kalle"')
-	// Lisä infoa http://app.aleph.csc.fi:210/bib
-	// 026 Sormenjälki
-	// 017 Tekijänoikeus
-	// 034 kartta tiedot
-	// 039 Suomalainen katasto
-	// 100 Henkilönimet
-	// 110 Yhteisöt
-	// 245 Nimike- ja vastuullisuusmerkintö
+		// TODO Kentät AUCT
+		// 100 Henkilönimet
+		// 110 Yhteisöt
+		// 148 - OTSIKKOMUOTO - AIKAA ILMAISEVA TERMI (ET)
+		// 151 - OTSIKKOMUOTO - MAANTIETEELLINEN NIMI (ET)
+		// 181 - OTSIKKOMUOTO - MAANTIETEELLINEN LISÄMÄÄRE (ET)
+		// 182 - OTSIKKOMUOTO - AIKAA ILMAISEVA LISÄMÄÄRE (ET)
+		// 046 - ERIKOISKOODATUT AJANKOHDAT (T) alku ja loppu
+		// 370 - PAIKANNIMI (T)
+		// 373 - YHTEYS RYHMÄÄN (T)
+		// 375 - SUKUPUOLI (T)
+		// 378 - HENKILÖNNIMEN TÄYDELLISEMPI MUOTO (T)
 
-	// TODO Kentät AUCT
-	// 100 Henkilönimet
-	// 110 Yhteisöt
-	// 148 - OTSIKKOMUOTO - AIKAA ILMAISEVA TERMI (ET)
-	// 151 - OTSIKKOMUOTO - MAANTIETEELLINEN NIMI (ET)
-	// 181 - OTSIKKOMUOTO - MAANTIETEELLINEN LISÄMÄÄRE (ET)
-	// 182 - OTSIKKOMUOTO - AIKAA ILMAISEVA LISÄMÄÄRE (ET)
-	// 046 - ERIKOISKOODATUT AJANKOHDAT (T) alku ja loppu
-	// 370 - PAIKANNIMI (T)
-	// 373 - YHTEYS RYHMÄÄN (T)
-	// 375 - SUKUPUOLI (T)
-	// 378 - HENKILÖNNIMEN TÄYDELLISEMPI MUOTO (T)
+		// const f100 = marcRecord.get(/^100$/);
+		// const nimi = f100.subfields.some(sub => (sub.code === 'a'));
 
-	// const f100 = marcRecord.get(/^100$/);
-	// const nimi = f100.subfields.some(sub => (sub.code === 'a'));
-
-	const creationDate = moment().format('YYMMDD');
-		let record = new MarcRecord({
+		const creationDate = moment().format('YYMMDD');
+		let fakeRecord = new MarcRecord({
 			leader: '00000ngm a22005774i 4500',
 			fields: [
 				{
@@ -131,16 +158,16 @@ export default function (stream, {validate = true, fix = true}) {
 			]
 		});
 
-		if (inputData === false) {
-			record.appendField({tag: 'FOO', value: 'bar'});
+		if (data === false) {
+			fakeRecord.appendField({tag: 'FOO', value: 'bar'});
 		}
 
 		if (validate === true || fix === true) {
 			// Validation works only if inputData is type boolean: true or false.
-			return validator(record, validate, fix);
+			return validator(fakeRecord, validate, fix);
 		}
 
 		// No validation or fix = all succes!
-		return {failed: false, record: {...record}};
+		return {failed: false, record: {...fakeRecord}};
 	}
 }
